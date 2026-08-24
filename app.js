@@ -2,9 +2,10 @@ let currentExamId = "";
 let currentQuestionIndex = 0;
 let totalQuestions = 0;
 let examStartTime = null;
+let examEndTime = null;
 let currentTheme = "light";
 let examTimer = null;
-let timeRemaining = 3600; // 1 hour in seconds
+let timeRemaining = 5400; // 1 hour 30 minutes
 let isOnline = navigator.onLine;
 let isExamActive = false;
 let tabSwitchCount = 0;
@@ -245,7 +246,8 @@ async function startExam() {
   securityEventLog = [];
   suspiciousActivityDetected = false;
 
-  timeRemaining = 3600;
+  timeRemaining = 5400;
+  examEndTime = new Date(Date.now() + timeRemaining * 1000);
   startTimer();
 
   try {
@@ -280,12 +282,14 @@ function startTimer() {
   if (examTimer) clearInterval(examTimer);
 
   examTimer = setInterval(() => {
-    timeRemaining--;
+    const now = new Date();
+    timeRemaining = Math.max(0, Math.floor((examEndTime - now) / 1000));
     updateTimerDisplay();
     updateTimerBar();
 
     if (timeRemaining <= 0) {
       clearInterval(examTimer);
+      examTimer = null;
       autoSubmitExam();
     }
   }, 1000);
@@ -305,9 +309,9 @@ function updateTimerDisplay() {
 
   if (timerDisplay) {
     timerDisplay.className = "timer-display";
-    if (timeRemaining <= 600) {
+    if (timeRemaining <= 1800) {
       timerDisplay.classList.add("danger");
-    } else if (timeRemaining <= 1200) {
+    } else if (timeRemaining <= 2700) {
       timerDisplay.classList.add("warning");
     }
   }
@@ -316,13 +320,13 @@ function updateTimerDisplay() {
 function updateTimerBar() {
   const timerBar = document.getElementById("timerBar");
   if (timerBar) {
-    const percentage = (timeRemaining / 3600) * 100;
+    const percentage = (timeRemaining / 5400) * 100;
     timerBar.style.width = `${percentage}%`;
 
     timerBar.className = "timer-bar";
-    if (timeRemaining <= 600) {
+    if (timeRemaining <= 1800) {
       timerBar.classList.add("danger");
-    } else if (timeRemaining <= 1200) {
+    } else if (timeRemaining <= 2700) {
       timerBar.classList.add("warning");
     }
   }
@@ -559,6 +563,8 @@ function prevQuestion() {
 function finishExam() {
   isExamActive = false;
   clearInterval(examTimer);
+  examTimer = null;
+  examEndTime = null;
   applyBlurEffect(false);
   showExamCompletionReport();
 }
@@ -588,12 +594,6 @@ function showExamCompletionReport() {
           <h5 class="modal-title">Exam Completed</h5>
         </div>
         <div class="modal-body">
-          <p>Congratulations! You have successfully completed the exam.</p>
-          ${
-            suspiciousActivityDetected
-              ? '<p class="text-danger">Warning: Suspicious activity detected (possible Snipping Tool or AI tool usage).</p>'
-              : ""
-          }
           <div class="exam-summary">
             <div class="summary-item">
               <span class="label">Exam ID:</span>
@@ -607,32 +607,6 @@ function showExamCompletionReport() {
               <span class="label">Total Time:</span>
               <span class="value">${minutes}m ${seconds}s</span>
             </div>
-            <div class="summary-item">
-              <span class="label">Tab Switches Detected:</span>
-              <span class="value">${tabSwitchCount}</span>
-            </div>
-            ${
-              tabSwitchLog.length > 0
-                ? `
-            <div class="summary-item">
-              <span class="label">Tab Switch Log:</span>
-              <div class="value">${tabSwitchLog
-                .map((log) => `<div>${log}</div>`)
-                .join("")}</div>
-            </div>`
-                : ""
-            }
-            ${
-              securityEventLog.length > 0
-                ? `
-            <div class="summary-item">
-              <span class="label">Security Events:</span>
-              <div class="value">${securityEventLog
-                .map((log) => `<div>${log}</div>`)
-                .join("")}</div>
-            </div>`
-                : ""
-            }
           </div>
         </div>
         <div class="modal-footer">
